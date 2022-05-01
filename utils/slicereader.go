@@ -1,4 +1,4 @@
-package wizutil
+package utils
 
 import "io"
 

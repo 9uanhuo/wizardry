@@ -1,4 +1,4 @@
-package wizutil
+package utils
 
 const maxBufLen = 128 * 1024 // 128KB buffer
 

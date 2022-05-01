@@ -2,13 +2,11 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package wizardry
+package utils
 
 import (
 	"log"
 	"strings"
-
-	"github.com/itchio/wizardry/wizardry/wizutil"
 )
 
 // StringFinder efficiently finds strings in a source text. It's implemented
@@ -107,10 +105,10 @@ func longestCommonSuffix(a, b string) (i int) {
 
 // next returns the index in text of the first occurrence of the pattern. If
 // the pattern is not found, it returns -1.
-func (f *StringFinder) next(sr *wizutil.SliceReader) int64 {
+func (f *StringFinder) next(sr *SliceReader) int64 {
 	i := int64(len(f.pattern) - 1)
 
-	bv := &wizutil.ByteView{
+	bv := &ByteView{
 		Input:    sr,
 		LookBack: int64(len(f.pattern)),
 	}
@@ -144,11 +142,4 @@ func (f *StringFinder) next(sr *wizutil.SliceReader) int64 {
 		i += max(f.badCharSkip[c], f.goodSuffixSkip[j])
 	}
 	return -1
-}
-
-func max(a, b int64) int64 {
-	if a > b {
-		return a
-	}
-	return b
 }

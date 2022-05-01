@@ -1,12 +1,11 @@
-package wizinterpreter
+package interpreter
 
 import (
 	"fmt"
 	"io"
 
-	"github.com/itchio/wizardry/wizardry"
-	"github.com/itchio/wizardry/wizardry/wizparser"
-	"github.com/itchio/wizardry/wizardry/wizutil"
+	"github.com/9uanhuo/wizardry/parser"
+	"github.com/9uanhuo/wizardry/utils"
 )
 
 // MaxLevels is the maximum level of magic rules that are interpreted
@@ -18,11 +17,11 @@ type LogFunc func(format string, args ...interface{})
 // InterpretContext holds state for the interpreter
 type InterpretContext struct {
 	Logf LogFunc
-	Book wizparser.Spellbook
+	Book parser.Spellbook
 }
 
 // Identify follows the rules in a spellbook to find out the type of a file
-func (ctx *InterpretContext) Identify(sr *wizutil.SliceReader) ([]string, error) {
+func (ctx *InterpretContext) Identify(sr *utils.SliceReader) ([]string, error) {
 	outStrings, err := ctx.identifyInternal(sr, 0, "", false)
 	if err != nil {
 		return nil, err
@@ -31,7 +30,7 @@ func (ctx *InterpretContext) Identify(sr *wizutil.SliceReader) ([]string, error)
 	return outStrings, nil
 }
 
-func (ctx *InterpretContext) identifyInternal(sr *wizutil.SliceReader, pageOffset int64, page string, swapEndian bool) ([]string, error) {
+func (ctx *InterpretContext) identifyInternal(sr *utils.SliceReader, pageOffset int64, page string, swapEndian bool) ([]string, error) {
 	var outStrings []string
 
 	matchedLevels := make([]bool, MaxLevels)
@@ -78,7 +77,7 @@ func (ctx *InterpretContext) identifyInternal(sr *wizutil.SliceReader, pageOffse
 		ctx.Logf("| %s", rule)
 
 		switch rule.Offset.OffsetType {
-		case wizparser.OffsetTypeIndirect:
+		case parser.OffsetTypeIndirect:
 			indirect := rule.Offset.Indirect
 			offsetAddress := indirect.OffsetAddress
 
@@ -105,17 +104,17 @@ func (ctx *InterpretContext) identifyInternal(sr *wizutil.SliceReader, pageOffse
 			}
 
 			switch indirect.OffsetAdjustmentType {
-			case wizparser.AdjustmentAdd:
+			case parser.AdjustmentAdd:
 				lookupOffset = lookupOffset + offsetAdjustValue
-			case wizparser.AdjustmentSub:
+			case parser.AdjustmentSub:
 				lookupOffset = lookupOffset - offsetAdjustValue
-			case wizparser.AdjustmentMul:
+			case parser.AdjustmentMul:
 				lookupOffset = lookupOffset * offsetAdjustValue
-			case wizparser.AdjustmentDiv:
+			case parser.AdjustmentDiv:
 				lookupOffset = lookupOffset / offsetAdjustValue
 			}
 
-		case wizparser.OffsetTypeDirect:
+		case parser.OffsetTypeDirect:
 			lookupOffset = rule.Offset.Direct + pageOffset
 		}
 
@@ -131,8 +130,8 @@ func (ctx *InterpretContext) identifyInternal(sr *wizutil.SliceReader, pageOffse
 		success := false
 
 		switch rule.Kind.Family {
-		case wizparser.KindFamilyInteger:
-			ik, _ := rule.Kind.Data.(*wizparser.IntegerKind)
+		case parser.KindFamilyInteger:
+			ik, _ := rule.Kind.Data.(*parser.IntegerKind)
 
 			if ik.MatchAny {
 				success = true
@@ -148,22 +147,22 @@ func (ctx *InterpretContext) identifyInternal(sr *wizutil.SliceReader, pageOffse
 				}
 
 				switch ik.AdjustmentType {
-				case wizparser.AdjustmentAdd:
+				case parser.AdjustmentAdd:
 					targetValue = uint64(int64(targetValue) + ik.AdjustmentValue)
-				case wizparser.AdjustmentSub:
+				case parser.AdjustmentSub:
 					targetValue = uint64(int64(targetValue) - ik.AdjustmentValue)
-				case wizparser.AdjustmentMul:
+				case parser.AdjustmentMul:
 					targetValue = uint64(int64(targetValue) * ik.AdjustmentValue)
-				case wizparser.AdjustmentDiv:
+				case parser.AdjustmentDiv:
 					targetValue = uint64(int64(targetValue) / ik.AdjustmentValue)
 				}
 
 				switch ik.IntegerTest {
-				case wizparser.IntegerTestEqual:
+				case parser.IntegerTestEqual:
 					success = targetValue == uint64(ik.Value)
-				case wizparser.IntegerTestNotEqual:
+				case parser.IntegerTestNotEqual:
 					success = targetValue != uint64(ik.Value)
-				case wizparser.IntegerTestLessThan:
+				case parser.IntegerTestLessThan:
 					if ik.Signed {
 						switch ik.ByteWidth {
 						case 1:
@@ -178,7 +177,7 @@ func (ctx *InterpretContext) identifyInternal(sr *wizutil.SliceReader, pageOffse
 					} else {
 						success = targetValue < uint64(ik.Value)
 					}
-				case wizparser.IntegerTestGreaterThan:
+				case parser.IntegerTestGreaterThan:
 					if ik.Signed {
 						switch ik.ByteWidth {
 						case 1:
@@ -200,10 +199,10 @@ func (ctx *InterpretContext) identifyInternal(sr *wizutil.SliceReader, pageOffse
 				}
 			}
 
-		case wizparser.KindFamilyString:
-			sk, _ := rule.Kind.Data.(*wizparser.StringKind)
+		case parser.KindFamilyString:
+			sk, _ := rule.Kind.Data.(*parser.StringKind)
 
-			matchLen := wizardry.StringTest(sr, lookupOffset, string(sk.Value), sk.Flags)
+			matchLen := utils.StringTest(sr, lookupOffset, string(sk.Value), sk.Flags)
 			success = matchLen >= 0
 
 			if sk.Negate {
@@ -214,24 +213,24 @@ func (ctx *InterpretContext) identifyInternal(sr *wizutil.SliceReader, pageOffse
 				}
 			}
 
-		case wizparser.KindFamilySearch:
-			sk, _ := rule.Kind.Data.(*wizparser.SearchKind)
+		case parser.KindFamilySearch:
+			sk, _ := rule.Kind.Data.(*parser.SearchKind)
 
-			matchPos := wizardry.SearchTest(sr, lookupOffset, sk.MaxLen, string(sk.Value))
+			matchPos := utils.SearchTest(sr, lookupOffset, sk.MaxLen, string(sk.Value))
 			success = matchPos >= 0
 
 			if success {
 				globalOffset = lookupOffset + matchPos + int64(len(sk.Value))
 			}
 
-		case wizparser.KindFamilyDefault:
+		case parser.KindFamilyDefault:
 			// default tests match if nothing has matched before
 			if !everMatchedLevels[rule.Level] {
 				success = true
 			}
 
-		case wizparser.KindFamilyUse:
-			uk, _ := rule.Kind.Data.(*wizparser.UseKind)
+		case parser.KindFamilyUse:
+			uk, _ := rule.Kind.Data.(*parser.UseKind)
 
 			ctx.Logf("|====> using %s", uk.Page)
 
@@ -241,7 +240,7 @@ func (ctx *InterpretContext) identifyInternal(sr *wizutil.SliceReader, pageOffse
 			}
 			outStrings = append(outStrings, subStrings...)
 
-		case wizparser.KindFamilyClear:
+		case parser.KindFamilyClear:
 			everMatchedLevels[rule.Level] = false
 		}
 
@@ -265,7 +264,7 @@ func (ctx *InterpretContext) identifyInternal(sr *wizutil.SliceReader, pageOffse
 	return outStrings, nil
 }
 
-func readAnyUint(sr *wizutil.SliceReader, j int, byteWidth int, endianness wizparser.Endianness) (uint64, error) {
+func readAnyUint(sr *utils.SliceReader, j int, byteWidth int, endianness parser.Endianness) (uint64, error) {
 	if int64(j+byteWidth) > sr.Size() {
 		return 0, io.EOF
 	}

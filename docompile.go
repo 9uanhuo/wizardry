@@ -3,8 +3,8 @@ package main
 import (
 	"fmt"
 
-	"github.com/itchio/wizardry/wizardry/wizcompiler"
-	"github.com/itchio/wizardry/wizardry/wizparser"
+	"github.com/9uanhuo/wizardry/compiler"
+	"github.com/9uanhuo/wizardry/parser"
 	"github.com/pkg/errors"
 )
 
@@ -17,7 +17,7 @@ func doCompile() error {
 		fmt.Println(fmt.Sprintf(format, args...))
 	}
 
-	pctx := &wizparser.ParseContext{
+	pctx := &parser.ParseContext{
 		Logf: NoLogf,
 	}
 
@@ -25,13 +25,13 @@ func doCompile() error {
 		pctx.Logf = Logf
 	}
 
-	book := make(wizparser.Spellbook)
+	book := make(parser.Spellbook)
 	err := pctx.ParseAll(magdir, book)
 	if err != nil {
 		return errors.WithStack(err)
 	}
 
-	err = wizcompiler.Compile(book, *compileArgs.output, *compileArgs.chatty, *compileArgs.emitComments, *compileArgs.pkg)
+	err = compiler.Compile(book, *compileArgs.output, *compileArgs.chatty, *compileArgs.emitComments, *compileArgs.pkg)
 	if err != nil {
 		return errors.WithStack(err)
 	}

@@ -1,14 +1,15 @@
-package wizcompiler
+package compiler
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"sort"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/itchio/wizardry/wizardry/wizparser"
+	"github.com/9uanhuo/wizardry/parser"
 	"github.com/pkg/errors"
 )
 
@@ -16,7 +17,7 @@ type indentCallback func()
 
 type ruleNode struct {
 	id       int64
-	rule     wizparser.Rule
+	rule     parser.Rule
 	children []*ruleNode
 }
 
@@ -28,7 +29,7 @@ type PageUsage struct {
 }
 
 // Compile generates go code from a spellbook
-func Compile(book wizparser.Spellbook, output string, chatty bool, emitComments bool, pkg string) error {
+func Compile(book parser.Spellbook, output string, chatty bool, emitComments bool, pkg string) error {
 	startTime := time.Now()
 
 	f, err := os.Create(output)
@@ -89,7 +90,7 @@ func Compile(book wizparser.Spellbook, output string, chatty bool, emitComments 
 		emit(strconv.Quote("fmt"))
 		emit(strconv.Quote("encoding/binary"))
 		emit(strconv.Quote("github.com/itchio/wizardry/wizardry"))
-		emit(strconv.Quote("github.com/itchio/wizardry/wizardry/wizutil"))
+		emit(strconv.Quote("github.com/itchio/wizardry/wizardry/utils"))
 	})
 	emit(")")
 	emit("")
@@ -108,11 +109,11 @@ func Compile(book wizparser.Spellbook, output string, chatty bool, emitComments 
 	emit("")
 
 	for _, byteWidth := range []byte{1, 2, 4, 8} {
-		for _, endianness := range []wizparser.Endianness{wizparser.LittleEndian, wizparser.BigEndian} {
+		for _, endianness := range []parser.Endianness{parser.LittleEndian, parser.BigEndian} {
 			retType := "uint64"
 
 			emit("// reads an unsigned %d-bit %s integer", byteWidth*8, endianness)
-			emit("func f%d%s(r *wizutil.SliceReader, off int64) (%s, bool) {", byteWidth, endiannessString(endianness, false), retType)
+			emit("func f%d%s(r *utils.SliceReader, off int64) (%s, bool) {", byteWidth, endiannessString(endianness, false), retType)
 			withIndent(func() {
 				emit("n,err:=r.ReadAt(tb,int64(off))")
 				emit("if n<%d||err!=nil {return 0,f}", byteWidth)
@@ -153,7 +154,7 @@ func Compile(book wizparser.Spellbook, output string, chatty bool, emitComments 
 				}
 			}
 
-			emit("func Identify%s(r *wizutil.SliceReader, po int64) []string {", pageSymbol(page, swapEndian))
+			emit("func Identify%s(r *utils.SliceReader, po int64) []string {", pageSymbol(page, swapEndian))
 			withIndent(func() {
 				emit("var out []string")
 				emit("var ss []string; ss=ss[0:]")
@@ -191,7 +192,7 @@ func Compile(book wizparser.Spellbook, output string, chatty bool, emitComments 
 					emitGlobalOffset := false
 					for _, child := range node.children {
 						cof := child.rule.Offset
-						if cof.IsRelative || (cof.OffsetType == wizparser.OffsetTypeIndirect && cof.Indirect.IsRelative) {
+						if cof.IsRelative || (cof.OffsetType == parser.OffsetTypeIndirect && cof.Indirect.IsRelative) {
 							emitGlobalOffset = true
 							break
 						}
@@ -209,7 +210,7 @@ func Compile(book wizparser.Spellbook, output string, chatty bool, emitComments 
 					}
 
 					switch rule.Offset.OffsetType {
-					case wizparser.OffsetTypeDirect:
+					case parser.OffsetTypeDirect:
 						off = &BinaryOp{
 							LHS:      &VariableAccess{"po"},
 							Operator: OperatorAdd,
@@ -222,7 +223,7 @@ func Compile(book wizparser.Spellbook, output string, chatty bool, emitComments 
 								RHS:      &VariableAccess{"gf"},
 							}
 						}
-					case wizparser.OffsetTypeIndirect:
+					case parser.OffsetTypeIndirect:
 						indirect := rule.Offset.Indirect
 
 						var offsetAddress Expression = &NumberLiteral{indirect.OffsetAddress}
@@ -257,25 +258,25 @@ func Compile(book wizparser.Spellbook, output string, chatty bool, emitComments 
 						off = &VariableAccess{"int64(ra)"}
 
 						switch indirect.OffsetAdjustmentType {
-						case wizparser.AdjustmentAdd:
+						case parser.AdjustmentAdd:
 							off = &BinaryOp{
 								LHS:      off,
 								Operator: OperatorAdd,
 								RHS:      offsetAdjustValue,
 							}
-						case wizparser.AdjustmentSub:
+						case parser.AdjustmentSub:
 							off = &BinaryOp{
 								LHS:      off,
 								Operator: OperatorSub,
 								RHS:      offsetAdjustValue,
 							}
-						case wizparser.AdjustmentMul:
+						case parser.AdjustmentMul:
 							off = &BinaryOp{
 								LHS:      off,
 								Operator: OperatorMul,
 								RHS:      offsetAdjustValue,
 							}
-						case wizparser.AdjustmentDiv:
+						case parser.AdjustmentDiv:
 							off = &BinaryOp{
 								LHS:      off,
 								Operator: OperatorDiv,
@@ -295,8 +296,8 @@ func Compile(book wizparser.Spellbook, output string, chatty bool, emitComments 
 					off = off.Fold()
 
 					switch rule.Kind.Family {
-					case wizparser.KindFamilySwitch:
-						sk, _ := rule.Kind.Data.(*wizparser.SwitchKind)
+					case parser.KindFamilySwitch:
+						sk, _ := rule.Kind.Data.(*parser.SwitchKind)
 
 						emit("rc,m=f%d%s(r,%s)",
 							sk.ByteWidth,
@@ -314,15 +315,15 @@ func Compile(book wizparser.Spellbook, output string, chatty bool, emitComments 
 						})
 						emit("}")
 
-					case wizparser.KindFamilyInteger:
-						ik, _ := rule.Kind.Data.(*wizparser.IntegerKind)
+					case parser.KindFamilyInteger:
+						ik, _ := rule.Kind.Data.(*parser.IntegerKind)
 
 						if !ik.MatchAny {
 							reuseSibling := false
 							if prevSiblingNode != nil {
 								pr := prevSiblingNode.rule
-								if pr.Offset.Equals(rule.Offset) && pr.Kind.Family == wizparser.KindFamilyInteger {
-									pik, _ := pr.Kind.Data.(*wizparser.IntegerKind)
+								if pr.Offset.Equals(rule.Offset) && pr.Kind.Family == parser.KindFamilyInteger {
+									pik, _ := pr.Kind.Data.(*parser.IntegerKind)
 									if pik.ByteWidth == ik.ByteWidth {
 										reuseSibling = true
 									}
@@ -341,17 +342,17 @@ func Compile(book wizparser.Spellbook, output string, chatty bool, emitComments 
 
 							operator := "=="
 							switch ik.IntegerTest {
-							case wizparser.IntegerTestEqual:
+							case parser.IntegerTestEqual:
 								operator = "=="
-							case wizparser.IntegerTestNotEqual:
+							case parser.IntegerTestNotEqual:
 								operator = "!="
-							case wizparser.IntegerTestLessThan:
+							case parser.IntegerTestLessThan:
 								operator = "< "
-							case wizparser.IntegerTestGreaterThan:
+							case parser.IntegerTestGreaterThan:
 								operator = ">"
 							}
 
-							if ik.Signed && (ik.IntegerTest == wizparser.IntegerTestGreaterThan || ik.IntegerTest == wizparser.IntegerTestLessThan) {
+							if ik.Signed && (ik.IntegerTest == parser.IntegerTestGreaterThan || ik.IntegerTest == parser.IntegerTestLessThan) {
 								lhs = fmt.Sprintf("int64(int%d(%s))", ik.ByteWidth*8, lhs)
 							}
 
@@ -360,13 +361,13 @@ func Compile(book wizparser.Spellbook, output string, chatty bool, emitComments 
 							}
 
 							switch ik.AdjustmentType {
-							case wizparser.AdjustmentAdd:
+							case parser.AdjustmentAdd:
 								lhs = fmt.Sprintf("(%s+%s)", lhs, quoteNumber(ik.AdjustmentValue))
-							case wizparser.AdjustmentSub:
+							case parser.AdjustmentSub:
 								lhs = fmt.Sprintf("(%s-%s)", lhs, quoteNumber(ik.AdjustmentValue))
-							case wizparser.AdjustmentMul:
+							case parser.AdjustmentMul:
 								lhs = fmt.Sprintf("(%s*%s)", lhs, quoteNumber(ik.AdjustmentValue))
-							case wizparser.AdjustmentDiv:
+							case parser.AdjustmentDiv:
 								lhs = fmt.Sprintf("(%s/%s)", lhs, quoteNumber(ik.AdjustmentValue))
 							}
 
@@ -384,8 +385,8 @@ func Compile(book wizparser.Spellbook, output string, chatty bool, emitComments 
 							}
 							emit("gf=%s", gfValue.Fold())
 						}
-					case wizparser.KindFamilyString:
-						sk, _ := rule.Kind.Data.(*wizparser.StringKind)
+					case parser.KindFamilyString:
+						sk, _ := rule.Kind.Data.(*parser.StringKind)
 						emit("rA = gt(r,%s,%s,%d)", off, strconv.Quote(string(sk.Value)), sk.Flags)
 						canFail = true
 						if sk.Negate {
@@ -402,8 +403,8 @@ func Compile(book wizparser.Spellbook, output string, chatty bool, emitComments 
 							emit("gf=%s", gfValue.Fold())
 						}
 
-					case wizparser.KindFamilySearch:
-						sk, _ := rule.Kind.Data.(*wizparser.SearchKind)
+					case parser.KindFamilySearch:
+						sk, _ := rule.Kind.Data.(*parser.SearchKind)
 						emit("rA=ht(r,%s,%s,%s)", off, quoteNumber(int64(sk.MaxLen)), strconv.Quote(string(sk.Value)))
 						canFail = true
 						emit("if rA<0 {goto %s}", failLabel(node))
@@ -420,21 +421,21 @@ func Compile(book wizparser.Spellbook, output string, chatty bool, emitComments 
 							emit("gf=%s", gfValue.Fold())
 						}
 
-					case wizparser.KindFamilyUse:
-						uk, _ := rule.Kind.Data.(*wizparser.UseKind)
+					case parser.KindFamilyUse:
+						uk, _ := rule.Kind.Data.(*parser.UseKind)
 						emit("a(Identify%s(r,%s)...)", pageSymbol(uk.Page, uk.SwapEndian), off)
 
-					case wizparser.KindFamilyName:
+					case parser.KindFamilyName:
 						// do nothing, pretty much
 
-					case wizparser.KindFamilyClear:
+					case parser.KindFamilyClear:
 						// reset defaultMarker for this level
 						if defaultMarker == "" {
 							panic("compiler error: nil defaultMarker for clear rule")
 						}
 						emit("%s=f", defaultMarker)
 
-					case wizparser.KindFamilyDefault:
+					case parser.KindFamilyDefault:
 						// only succeed if defaultMarker is unset
 						// (so, fail if it's set)
 						if defaultMarker == "" {
@@ -464,7 +465,7 @@ func Compile(book wizparser.Spellbook, output string, chatty bool, emitComments 
 
 					if numChildren > 0 {
 						for _, child := range node.children {
-							if child.rule.Kind.Family == wizparser.KindFamilyDefault {
+							if child.rule.Kind.Family == parser.KindFamilyDefault {
 								childDefaultMarker = fmt.Sprintf("d[%d]", rule.Level)
 								defaultSeed++
 								emit("%s=f", childDefaultMarker)
@@ -504,7 +505,7 @@ func Compile(book wizparser.Spellbook, output string, chatty bool, emitComments 
 
 	fmt.Printf("Compiled in %s\n", time.Since(startTime))
 
-	fSize, _ := f.Seek(0, os.SEEK_CUR)
+	fSize, _ := f.Seek(0, io.SeekCurrent)
 	fmt.Printf("Generated code is %.2f KiB\n", float64(fSize)/1024.0)
 
 	return nil
@@ -523,8 +524,8 @@ func pageSymbol(page string, swapEndian bool) string {
 	return result
 }
 
-func endiannessString(en wizparser.Endianness, swapEndian bool) string {
-	if en.MaybeSwapped(swapEndian) == wizparser.BigEndian {
+func endiannessString(en parser.Endianness, swapEndian bool) string {
+	if en.MaybeSwapped(swapEndian) == parser.BigEndian {
 		return "b"
 	}
 	return "l"

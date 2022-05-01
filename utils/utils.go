@@ -1,4 +1,4 @@
-package wizutil
+package utils
 
 import (
 	"regexp"
@@ -15,12 +15,12 @@ func IsNumber(b byte) bool {
 	return '0' <= b && b <= '9'
 }
 
-// IsNumber tests if a byte is in [0-7]
+// IsOctalNumber tests if a byte is in [0-7]
 func IsOctalNumber(b byte) bool {
 	return '0' <= b && b <= '7'
 }
 
-// IsNumber tests if a byte is in [0-9A-Za-z]
+// IsHexNumber tests if a byte is in [0-9A-Za-z]
 func IsHexNumber(b byte) bool {
 	return ('0' <= b && b <= '9') || ('a' <= b && b <= 'f') || ('A' <= b && b <= 'F')
 }

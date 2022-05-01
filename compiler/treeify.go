@@ -1,8 +1,10 @@
-package wizcompiler
+package compiler
 
-import "github.com/itchio/wizardry/wizardry/wizparser"
+import (
+	"github.com/9uanhuo/wizardry/parser"
+)
 
-func treeify(rules []wizparser.Rule) []*ruleNode {
+func treeify(rules []parser.Rule) []*ruleNode {
 	var rootNodes []*ruleNode
 	var nodeStack []*ruleNode
 	var idSeed int64

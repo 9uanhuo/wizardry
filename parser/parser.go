@@ -1,15 +1,15 @@
-package wizparser
+package parser
 
 import (
 	"bufio"
 	"fmt"
+	"github.com/9uanhuo/wizardry/utils"
 	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
 
-	"github.com/itchio/wizardry/wizardry/wizutil"
 	"github.com/pkg/errors"
 )
 
@@ -102,33 +102,33 @@ func (ctx *ParseContext) Parse(magicReader io.Reader, book Spellbook) error {
 
 		// read offset
 		offsetStart := i
-		for i < numBytes && !wizutil.IsWhitespace(lineBytes[i]) {
+		for i < numBytes && !utils.IsWhitespace(lineBytes[i]) {
 			i++
 		}
 		offsetEnd := i
 		offset := line[offsetStart:offsetEnd]
 
 		// skip whitespace
-		for i < numBytes && wizutil.IsWhitespace(lineBytes[i]) {
+		for i < numBytes && utils.IsWhitespace(lineBytes[i]) {
 			i++
 		}
 
 		// read kind
 		kindStart := i
-		for i < numBytes && !wizutil.IsWhitespace(lineBytes[i]) {
+		for i < numBytes && !utils.IsWhitespace(lineBytes[i]) {
 			i++
 		}
 		kindEnd := i
 		kind := lineBytes[kindStart:kindEnd]
 
 		// skip whitespace
-		for i < numBytes && wizutil.IsWhitespace(lineBytes[i]) {
+		for i < numBytes && utils.IsWhitespace(lineBytes[i]) {
 			i++
 		}
 
 		// read test
 		testStart := i
-		for i < numBytes && !wizutil.IsWhitespace(lineBytes[i]) {
+		for i < numBytes && !utils.IsWhitespace(lineBytes[i]) {
 			// this isn't the greatest trick in the world tbh
 			if lineBytes[i] == '\\' {
 				i += 2
@@ -140,7 +140,7 @@ func (ctx *ParseContext) Parse(magicReader io.Reader, book Spellbook) error {
 		test := lineBytes[testStart:testEnd]
 
 		// skip whitespace
-		for i < numBytes && wizutil.IsWhitespace(lineBytes[i]) {
+		for i < numBytes && utils.IsWhitespace(lineBytes[i]) {
 			i++
 		}
 
@@ -189,9 +189,9 @@ func (ctx *ParseContext) Parse(magicReader io.Reader, book Spellbook) error {
 
 				indirect.Endianness = LittleEndian
 
-				if wizutil.IsUpperLetter(indirectAddrFormat) {
+				if utils.IsUpperLetter(indirectAddrFormat) {
 					indirect.Endianness = BigEndian
-					indirectAddrFormat = wizutil.ToLower(indirectAddrFormat)
+					indirectAddrFormat = utils.ToLower(indirectAddrFormat)
 				}
 
 				switch indirectAddrFormat {

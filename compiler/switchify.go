@@ -1,9 +1,9 @@
-package wizcompiler
+package compiler
 
 import (
 	"fmt"
 
-	"github.com/itchio/wizardry/wizardry/wizparser"
+	"github.com/9uanhuo/wizardry/parser"
 )
 
 func switchify(node *ruleNode) *ruleNode {
@@ -19,24 +19,24 @@ func switchify(node *ruleNode) *ruleNode {
 		case 1:
 			newChildren = append(newChildren, streak[0])
 		default:
-			model := streak[0].rule.Kind.Data.(*wizparser.IntegerKind)
-			sk := &wizparser.SwitchKind{
+			model := streak[0].rule.Kind.Data.(*parser.IntegerKind)
+			sk := &parser.SwitchKind{
 				ByteWidth:  model.ByteWidth,
 				Endianness: model.Endianness,
 				Signed:     model.Signed,
 			}
 			for _, child := range streak {
-				ik := child.rule.Kind.Data.(*wizparser.IntegerKind)
-				sk.Cases = append(sk.Cases, &wizparser.SwitchCase{
+				ik := child.rule.Kind.Data.(*parser.IntegerKind)
+				sk.Cases = append(sk.Cases, &parser.SwitchCase{
 					Description: child.rule.Description,
 					Value:       ik.Value,
 				})
 			}
 			newChildren = append(newChildren, &ruleNode{
 				id: streak[0].id,
-				rule: wizparser.Rule{
-					Kind: wizparser.Kind{
-						Family: wizparser.KindFamilySwitch,
+				rule: parser.Rule{
+					Kind: parser.Kind{
+						Family: parser.KindFamilySwitch,
 						Data:   sk,
 					},
 					Level:  streak[0].rule.Level,
@@ -53,9 +53,9 @@ func switchify(node *ruleNode) *ruleNode {
 
 		candidate := false
 
-		if child.rule.Kind.Family == wizparser.KindFamilyInteger && len(child.children) == 0 {
-			ik, _ := child.rule.Kind.Data.(*wizparser.IntegerKind)
-			if ik.IntegerTest == wizparser.IntegerTestEqual && !ik.DoAnd && ik.AdjustmentType == wizparser.AdjustmentNone {
+		if child.rule.Kind.Family == parser.KindFamilyInteger && len(child.children) == 0 {
+			ik, _ := child.rule.Kind.Data.(*parser.IntegerKind)
+			if ik.IntegerTest == parser.IntegerTestEqual && !ik.DoAnd && ik.AdjustmentType == parser.AdjustmentNone {
 				candidate = true
 			}
 		}
@@ -68,8 +68,8 @@ func switchify(node *ruleNode) *ruleNode {
 				if !lastChild.rule.Offset.Equals(child.rule.Offset) {
 					endStreak()
 				}
-				ik, _ := child.rule.Kind.Data.(*wizparser.IntegerKind)
-				jk, _ := lastChild.rule.Kind.Data.(*wizparser.IntegerKind)
+				ik, _ := child.rule.Kind.Data.(*parser.IntegerKind)
+				jk, _ := lastChild.rule.Kind.Data.(*parser.IntegerKind)
 				if ik.ByteWidth != jk.ByteWidth {
 					endStreak()
 				}

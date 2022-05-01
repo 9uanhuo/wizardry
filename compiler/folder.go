@@ -1,4 +1,4 @@
-package wizcompiler
+package compiler
 
 import (
 	"fmt"

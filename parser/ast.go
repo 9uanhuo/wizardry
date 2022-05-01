@@ -1,4 +1,4 @@
-package wizparser
+package parser
 
 import (
 	"encoding/binary"
@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/itchio/wizardry/wizardry"
+	"github.com/9uanhuo/wizardry/utils"
 )
 
 // Spellbook contains a set of rules - at least one "" page, potentially others
@@ -292,7 +292,7 @@ const (
 type StringKind struct {
 	Value  []byte
 	Negate bool
-	Flags  wizardry.StringTestFlags
+	Flags  utils.StringTestFlags
 }
 
 // SearchKind describes how to look for a fixed pattern

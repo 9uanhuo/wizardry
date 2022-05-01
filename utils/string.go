@@ -1,6 +1,4 @@
-package wizardry
-
-import "github.com/itchio/wizardry/wizardry/wizutil"
+package utils
 
 // StringTestFlags describes how to perform a string test
 type StringTestFlags int64
@@ -26,8 +24,8 @@ const (
 )
 
 // StringTest looks for a string pattern in target, at given index
-func StringTest(sr *wizutil.SliceReader, targetIndex int64, patternString string, flags StringTestFlags) int64 {
-	bv := &wizutil.ByteView{
+func StringTest(sr *SliceReader, targetIndex int64, patternString string, flags StringTestFlags) int64 {
+	bv := &ByteView{
 		Input:    sr,
 		LookBack: 0,
 	}
@@ -49,14 +47,14 @@ func StringTest(sr *wizutil.SliceReader, targetIndex int64, patternString string
 			// perfect match, advance both
 			targetIndex++
 			patternIndex++
-		} else if flags&OptionalBlanks > 0 && wizutil.IsWhitespace(patternByte) {
+		} else if flags&OptionalBlanks > 0 && IsWhitespace(patternByte) {
 			// cool, it's optional then
 			patternIndex++
-		} else if flags&LowerMatchesBoth > 0 && wizutil.IsLowerLetter(patternByte) && wizutil.ToLower(targetByte) == patternByte {
+		} else if flags&LowerMatchesBoth > 0 && IsLowerLetter(patternByte) && ToLower(targetByte) == patternByte {
 			// case insensitive match
 			targetIndex++
 			patternIndex++
-		} else if flags&UpperMatchesBoth > 0 && wizutil.IsUpperLetter(patternByte) && wizutil.ToUpper(targetByte) == patternByte {
+		} else if flags&UpperMatchesBoth > 0 && IsUpperLetter(patternByte) && ToUpper(targetByte) == patternByte {
 			// case insensitive match
 			targetIndex++
 			patternIndex++
@@ -65,7 +63,7 @@ func StringTest(sr *wizutil.SliceReader, targetIndex int64, patternString string
 			return -1
 		}
 
-		if flags&CompactWhitespace > 0 && wizutil.IsWhitespace(targetByte) {
+		if flags&CompactWhitespace > 0 && IsWhitespace(targetByte) {
 			// if we had whitespace, skip any whitespace coming after it
 			for {
 				targetIndex++
@@ -74,7 +72,7 @@ func StringTest(sr *wizutil.SliceReader, targetIndex int64, patternString string
 					return -1
 				}
 				targetByte = byte(targetInt)
-				if !wizutil.IsWhitespace(targetByte) {
+				if !IsWhitespace(targetByte) {
 					break
 				}
 			}

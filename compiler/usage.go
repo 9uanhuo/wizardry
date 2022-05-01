@@ -1,8 +1,10 @@
-package wizcompiler
+package compiler
 
-import "github.com/itchio/wizardry/wizardry/wizparser"
+import (
+	"github.com/9uanhuo/wizardry/parser"
+)
 
-func computePagesUsage(book wizparser.Spellbook) map[string]*PageUsage {
+func computePagesUsage(book parser.Spellbook) map[string]*PageUsage {
 	// look at all rules to see which pages are used, and whether they're used
 	// in normal endianness or swapped endianness
 	usages := make(map[string]*PageUsage)
@@ -12,8 +14,8 @@ func computePagesUsage(book wizparser.Spellbook) map[string]*PageUsage {
 
 	for _, rules := range book {
 		for _, rule := range rules {
-			if rule.Kind.Family == wizparser.KindFamilyUse {
-				uk, _ := rule.Kind.Data.(*wizparser.UseKind)
+			if rule.Kind.Family == parser.KindFamilyUse {
+				uk, _ := rule.Kind.Data.(*parser.UseKind)
 				var usage *PageUsage
 				var ok bool
 				if usage, ok = usages[uk.Page]; !ok {
